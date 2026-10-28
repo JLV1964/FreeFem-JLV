@@ -1,0 +1,52 @@
+// Parameters
+real T0=25.; real alpha1=9e-6; real alpha2=3.4e-5;
+real Taceite=150.; real h=200; real Cp=1700; real den=1140;
+real T=5000.; real dt=50;
+real D=0.3; real Dint=0.15;
+real term;real dummy;
+int C1=99, C2=98;
+term=h/(den*Cp);
+
+//Geometry
+
+border B(r=0., 2.*pi){x=D*cos(r)/2.; y=D*sin(r)/2.; label=C1;}
+border C(r=0., 2.*pi){x=Dint*cos(r)/2.; y=Dint*sin(r)/2.; label=C2;}
+
+// Mesh
+mesh Th= buildmesh (B(200)+C(-100));
+mesh th=buildmesh (C(100));
+plot (Th,th,wait=true);
+
+// Definition of FE space
+fespace Vh(Th,P1);
+fespace Wh (th,P1);
+Wh u=T0,v,uold;
+Vh U=T0,V,Uold;
+
+// EDP and boundary conditions
+problem CINT(u,v)
+	= int2d (th) (u*v/dt)
+	- int2d(th) (uold*v/dt)
+	+ int2d(th) (alpha2*(dx(u)*dx(v)+dy(u)*dy(v)))
+	+ on (C2,u=U);
+	
+problem CEXT(U,V)
+	=int2d (Th) (U*V/dt)
+	- int2d(Th) (Uold*V/dt)
+	+ int2d (Th) (alpha1*(dx(U)*dx(V)+dy(U)*dy(V)))
+	+ int1d(Th,C1)(term*U*V)
+	- int1d(Th,C1)(term*Taceite*V);
+	//+on(C2,U=u);
+	
+// Process and results 
+for (real t=0; t<T; t=t+dt) {
+	uold=u;
+	Uold=U;
+	if (t==0){plot(U,u,cmm="t= " +t +" s",fill=true,value=true);}
+	CEXT;
+	CINT;
+	
+	plot(U,u,cmm="t= " +t +" s",fill=true,value=true); 
+	cout<<t;
+}
+

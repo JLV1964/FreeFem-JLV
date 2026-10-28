@@ -1,0 +1,44 @@
+// Parameters
+real D=0.0062, rop=1570,DeA=2.9e-7,k=22.4e-6,CASS=0.195,T=3,dt=0.05;
+real suma,suma1,err;int kk; bool test;
+int C1=99;
+
+// Geometry
+border B(t=0,2*pi) {x=D*cos(t)/2;y=D*sin(t)/2;label=C1;}
+mesh Th=buildmesh (B(300));
+plot (Th, wait=1);
+
+// Definition of FE space
+fespace Vh(Th,P2);
+Vh u=CASS,v,up,vr;
+
+// EDP and boundary conditions
+problem difreac(u,v)
+	= int2d(Th) (DeA*(dx(u)*dx(v)+dy(u)*dy(v)))
+	+ int2d(Th) (rop*vr*v)
+	+ on (C1,u=CASS);
+
+// Iterative process and results
+test=true;kk=0;
+while (test) {
+	up[]=u[];
+	vr=k*u^3;
+	difreac;
+	suma=0;
+	for (int i=0; i<Th.nv;i++) {
+		suma +=(up[][i]-u[][i])^2;
+	}
+
+	if (kk>0) {
+		err=abs(suma-suma1);
+		if ( err<1.e-25) {
+			cout << "Iteration: " << kk << "   :Error:  " << err<<endl;
+			break;
+		} 
+	}
+	suma1=suma;
+	kk=kk+1;
+}
+
+plot (u,cmm="Iterations: "+kk,value=true, fill=true);
+

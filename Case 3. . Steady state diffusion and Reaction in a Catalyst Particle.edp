@@ -1,0 +1,29 @@
+real D=0.0062, rop=1570,DeA=2.9e-7,k=22.4e-6,CASS=0.195,T=3,dt=0.05;
+real suma, err,suma1;
+int C1=99; int m; bool test;
+border B(t=0,2*pi) {x=D*cos(t)/2;y=D*sin(t)/2;label=C1;}
+mesh Th=buildmesh (B(200));
+plot (Th, wait=1);
+fespace Vh(Th,P2);
+Vh u=CASS/2,v,up,vr;
+problem difreac(u,v)
+	= int2d(Th) (DeA*(dx(u)*dx(v)+dy(u)*dy(v)))
+	+ int2d(Th) (rop*vr*v)
+	+ on (C1,u=CASS);
+
+test=true;	m=0;
+while (test){
+	up[]=u[];
+	vr=k*u^3;
+	difreac;
+	suma=0;
+	for (int i=0; i<Th.nv;i++) {
+		suma +=(up[][i]-u[][i])^2;}
+	
+	if (m>0) {err=abs((suma-suma1));
+			  if (err<1.e-25 ) {//|| suma <1.e-25
+			  test=false;	} }
+	m=m+1;
+	suma1=suma;
+	cout << "error:  " << err << "  suma:  " << suma << "    suma1:  " << suma1 << endl;}
+plot (u,cmm="Iterations: "+m,value=true, fill=true);

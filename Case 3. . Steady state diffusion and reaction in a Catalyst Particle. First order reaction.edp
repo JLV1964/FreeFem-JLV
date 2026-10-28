@@ -1,0 +1,34 @@
+// Parameters
+real D=0.0062, rop=1570,DeA=2.9e-7,k=22.4e-6,CASS=0.195;
+real suma, err,suma1,radio;
+int C1=99; int m; bool test;
+
+// Geometry
+border B(t=0,2*pi) {x=D*cos(t)/2;y=D*sin(t)/2;label=C1;}
+mesh Th=buildmesh (B(200));
+plot (Th, wait=1);
+
+// Definition of FE space
+fespace Vh(Th,P2);
+Vh u,v,up,vr;
+
+// EDP and boundary conditions
+problem difreac(u,v)
+	= int2d(Th) (DeA*(dx(u)*dx(v)+dy(u)*dy(v)))
+	+ int2d(Th) (rop*k*u*v)
+	+ on (C1,u=CASS);
+
+// Results
+difreac;
+plot (u,value=true, fill=true);
+
+ofstream out ("C_profile.txt");
+
+out << Th.nv<< endl;
+
+for (int i = 0; i < Th.nv ; ++i){
+	radio=(Th(i).x^2+Th(i).y^2)^0.5;
+	out << Th(i).x << "," << Th(i).y<< "," << radio<<"," <<u[][i] << endl;
+}
+
+//cmedia=int1d(th,2) (cext)/int1d(th,2)(1);

@@ -1,0 +1,79 @@
+verbosity=0;
+// Parameters
+real Lt=1;real Dt=.1;real Re;
+real dt=1;real T=10000;real suma;
+real Dmed=0.03;real Lmed=0.15;int n=4;
+real Cini;real D=7.254373E-05; // m2/s
+real densidad=1000;real viscosidad=1.E-3;
+Cini=1000./(0.082*298.15); // kmol/m3
+
+// Geometry
+border C1 (t=0,Dmed) {x=t;y=0;label=2;}
+border C2 (t=0,0.05-0.015){x=Dmed;y=t;label=1;}
+border C3 (t=Dmed,Dmed+0.15) {x=t;y=0.05-0.015;label=1;}
+border C4 (t=0.05-0.015,0) {x=Dmed+0.15;y=t;label=1;}
+border C5 (t=Dmed+0.15,Dmed+1.15) {x=t;y=0;label=1;}
+border C6 (t=0,0.05-0.015) {x=Dmed+1.15;y=t;label=1;}
+border C7 (t=Dmed+1.15,Dmed+1.30) {x=t;y=0.05-0.015;label=1;}
+border C8 (t=0.05-0.015,0.05+0.015) {x=Dmed+1.30;y=t;label=3;}
+border C9 (t=Dmed+1.30,Dmed+1.15) {x=t;y=0.05+0.015;label=1;}
+border C10 (t=0.05+0.015,0.1) {x=Dmed+1.15;y=t;label=1;}
+border C11 (t=Dmed+1.15,Dmed+0.15) {x=t;y=0.1;label=1;}
+border C12 (t=0.1,0.05+0.015) {x=Dmed+0.15;y=t;label=1;}
+border C13 (t=Dmed+0.15,Dmed) {x=t;y=0.05+0.015;label=1;}
+border C14 (t=0.05+0.015,0.1) {x=Dmed;y=t;label=1;}
+border C15 (t=Dmed,0) {x=t;y=0.1;label=4;}
+border C16 (t=0.1,0) {x=0;y=t;label=1;}
+border C17 (t=0.25,0.28){x=t;y=0.035;label=5;}
+border C18 (t=0.035,0.065){x=0.28;y=t;label=5;}
+border C19 (t=0.28,0.25){x=t;y=0.065;label=5;}
+border C20 (t=0.065,0.035){x=0.25;y=t;label=5;}
+mesh Th=buildmesh(C1(n)+C2(3*n)+C3(8*n)+C4(3*n)+C5(50*n)+
+         C6(3*n)+C7(5*n)+C8(n)+C9(5*n)+C10(3*n)+
+		 C11(50*n)+C12(3*n)+C13(8*n)+C14(3*n)+C15(n)+C16(5*n)+
+		 C17(-n)+C18(-n)+C19(-n)+C20(-n));
+plot (Th,wait=1);
+
+// Definition of FE spaces and functions
+func g=2*0.08*(1-((Dmed/2)-x)^2/(Dmed/2)^2);
+Re=0.08*1E6*Dmed;
+cout<<"Re: "<<Re<<"  , Cini: "<<Cini<<endl;
+
+fespace CMH (Th,P2);
+fespace BMN (Th,P1);
+fespace BME (Th,P1);
+CMH u1=0,u2=0,up1,up2,p,v1,v2,pp;
+BMN cN=0,cNv,cNold;
+BME cE=0,cEv,cEold;
+
+problem navier ([u1,u2,p],[v1,v2,pp])=
+	  int2d(Th) ((u1*v1+u2*v2)/dt)
+	+ int2d(Th)((dx(u1)*dx(v1)+dy(u1)*dy(v1)+dx(u2)*dx(v2)+dy(u2)*dy(v2))*viscosidad/densidad
+	- (p*pp*1e-6)
+	- (p*(dx(v1)+dy(v2)))/densidad
+	- pp*(dx(u1)+dy(u2)))
+ 	- int2d(Th)((convect([up1,up2], -dt,up1)*v1+convect([up1,up2],-dt,up2)*v2)/dt)
+	+ on (2, u1=0,u2=g)
+	+ on (4, u1=0,u2=-g)
+	+ on (1, u1=0,u2=0)
+	+ on (3,p=0);
+
+problem mt ([cN,cE],[cNv,cEv])=
+	  int2d(Th) (cN*cNv/dt+D*(dx(cN)*dx(cNv)+dy(cN)*dy(cNv)))
+	- int2d(Th) (convect(([up1,up2]),-dt,cNold)*cNv/dt)
+	+ int2d(Th) (cE*cEv/dt+D*(dx(cE)*dx(cEv)+dy(cE)*dy(cEv)))
+	- int2d(Th) (convect(([up1,up2]),-dt,cEold)*cEv/dt)
+	+ on (4,cN=Cini)
+	+ on (2,cE=Cini);
+	
+// Results	  
+for(real tt=0;tt<T+dt;tt+=dt){
+	cNold[]=cN[];
+	cEold[]=cE[];
+	up1[]=u1[];
+	up2[]=u2[];
+	navier;
+	mt;
+	suma=tt+dt;
+	plot(cmm="tiempo = "+suma ,cE,wait=0,fill=true,value=true);
+};

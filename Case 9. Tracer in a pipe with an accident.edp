@@ -1,0 +1,56 @@
+verbosity=0;
+// Parameters
+real Lt=1;real Dt=.1;real cini;real cmed;
+
+// Geometry
+border C11 (t=0,Lt) {x=t;y=0.;label=1;}
+border C12 (t=0.,Dt) {x=Lt;y=t;label=2;}
+border C13 (t=0,Lt) {x=Lt-t;y=Dt;label=3;}
+border C14 (t=0.,Dt) {x=0;y=Dt-t;label=4;}
+border circulo(t=0,2*pi){x=0.3+0.02*cos(t);y=.05+.02*sin(t);label=6;}
+int n=15;real dt=0.5;real viscosidad=1e-3;
+real densidad=1e3;real Difusividad=1e-8;real T=200;
+mesh Th=buildmesh(C11(10*n)+C12(n)+C13(10*n)+C14(n)+circulo(-2*n));
+plot(Th,wait=1);
+
+// Definition of FE spaces and functions
+func g=2*.01*(1-((Dt/2)-y)^2/(Dt/2)^2);
+fespace CMH (Th,P2);
+fespace BMEX (Th,P1);
+CMH u1=0,u2=0,up1,up2,p,v1,v2,pp;
+BMEX cext=0,cvext,cextold;
+
+problem navier ([u1,u2,p],[v1,v2,pp],solver=UMFPACK)=
+	  int2d(Th) ((u1*v1+u2*v2)/dt)
+	+ int2d(Th)((dx(u1)*dx(v1)+dy(u1)*dy(v1)+dx(u2)*dx(v2)+dy(u2)*dy(v2))*viscosidad/densidad
+	- (p*pp*1e-6)
+	- (p*(dx(v1)+dy(v2)))/densidad
+	- pp*(dx(u1)+dy(u2)))
+ 	- int2d(Th)((convect([up1,up2], -dt,up1)*v1+convect([up1,up2],-dt,up2)*v2)/dt)
+	+ on (4, u1=g,u2=0)
+	+ on (1,3, u1=0,u2=0)
+	+ on (2,p=0)
+	+ on (6, u1=0,u2=0);
+
+problem macrodim ([cext],[cvext],solver=UMFPACK)=
+	 int2d(Th) (cext*cvext/dt+Difusividad*(dx(cext)*dx(cvext)+dy(cext)*dy(cvext)))
+	- int2d(Th) (convect(([up1,up2]),-dt,cextold)*cvext/dt)
+	+ on (4,cext=cini);
+
+// Results	  
+for(real tt=0;tt<T+dt;tt+=dt){
+	if (tt<10)
+		{cini=100;}
+	else
+		{cini=0;}
+	cextold[]=cext[];
+	up1[]=u1[];
+	up2[]=u2[];
+	cmed=int1d(Th,2) (cext)/int1d(Th,2)(1);
+	cout <<"u1 max: "<<u1[].max<< "    : u2 max:  "<<u2[].max<<endl;
+	cout <<"u1 min: "<<u1[].min<< "    : u2 min:  "<<u2[].min<<endl;
+	navier;
+	macrodim;
+	plot(cmm="tiempo = "+ tt+" :cmedia= "+cmed,cext,wait=0,fill=true,value=true);
+};
+

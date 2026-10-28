@@ -1,0 +1,33 @@
+// Parameters
+real D=0.0062, rop=1570,DeA=2.9e-7,k=22.4e-6,CASS=0.195,T=3600,dt=1;
+
+int C1=99;
+
+// Geometry
+border B(t=0,2*pi) {x=D*cos(t)/2;y=D*sin(t)/2;label=C1;}
+mesh Th=buildmesh (B(200));
+plot (Th, wait=1);
+
+// Definition of FE space
+fespace Vh(Th,P2);
+Vh u=0,v,uold,vr;
+
+// EDP and boundary conditions
+problem difreac(u,v)
+	= int2d(Th) (u*v/dt+DeA*(dx(u)*dx(v)+dy(u)*dy(v)))
+	+ int2d(Th) (rop*vr*v)
+	- int2d(Th) (uold*v/dt)
+	+ on (C1,u=CASS);
+
+// Results
+for (real t=0; t<T;t=t+dt) {
+	uold=u;
+	vr=k*u;
+	difreac;		
+	plot (u,cmm="t= " +t, fill=true,value=true);
+}
+
+
+
+
+

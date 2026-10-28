@@ -1,0 +1,37 @@
+verbosity=0;
+// Parameters
+real D=0.0062, rop=1570,DeA=2.9e-7,k=22.4e-6,CASS=0.195;
+real suma,err,suma1,Thiele,efecEF,efec,radius,nume,deno;
+int C1=99; int m; bool test;
+
+// Geometry
+border B(t=0,2*pi) {x=D*cos(t)/2;y=D*sin(t)/2;label=C1;}
+mesh Th=buildmesh (B(200));
+plot (Th, wait=1);
+
+// Definition of FE space
+fespace Vh(Th,P2);
+Vh u,v,up,vr;
+
+// EDP and boundary conditions
+problem difreac(u,v)
+	= int2d(Th) (DeA*(dx(u)*dx(v)+dy(u)*dy(v)))
+	+ int2d(Th) (rop*k*u*v)
+	+ on (C1,u=CASS);
+
+// Results
+ofstream out ("efec.txt");
+
+for (int i=0;i<100;++i) {
+	Thiele=(i+1.)/10.;
+	efec=tanh(Thiele)/Thiele;
+	radius=D/2;
+	DeA=k*rop/(3*Thiele/radius)^2;
+	difreac;
+	nume=int2d(Th)(k*u)/int2d(Th) (1);
+	deno=int1d(Th,C1)(k*u)/int1d(Th,C1) (1);
+	efecEF=nume/deno;
+	cout<<Thiele<<","<<efec << ","<<efecEF<<endl;
+	out << Thiele << "," << efec << ","<<efecEF<<endl;}
+	
+	

@@ -1,0 +1,48 @@
+// Parameters
+int i=0,nmax=1000;int n=30;
+real nu=1.e-6,dt=1,alpha=1/dt, den=2000;
+real borde1=(0.6+.015);real borde2= 0.6;
+real anchura=0.015;real length=2.4;real D=0.3;
+real anch=0.05;real vmed;real Re=2000;
+
+vmed=Re/(1.e6*D);
+cout <<vmed<<endl;
+
+// Geometry
+border a(t=0,length){x=t;y=0;label=1;};
+border b(t=0,D){x=length;y=t;label=2;};
+border c(t=length,borde1){x=t;y=D;label=1;};
+border d(t=D,anch){x=borde1;y=t;label=1;};
+border e(t=borde1,borde2) {x=t;y=anch;label=1;};
+border f (t=anch,D) {x=borde2;y=t;label=1;};
+border g (t=borde2,0) {x=t;y=D;label=1;};
+border h (t=D,0) {x=0;y=t;label=3;};
+mesh Th=buildmesh(a(4*n)+b(n)+c(3*n)+d(n)+e(n/2)+f(n)+ g(n)+h(n));
+plot (Th,wait=1);
+
+// Definition of FE spaces and functions
+fespace Vh(Th,P2), Qh(Th,P2);
+Vh u=0,v=0,uu,vv, uold,vold;
+Qh p,pp;
+func gg=2*vmed*(1-((D/2)-y)^2/(D/2)^2);
+
+// EDP and boundary conditions
+problem  ns(u,v,p,uu,vv,pp) =
+        int2d(Th)((u*uu+v*vv)/dt + nu*(dx(u)*dx(uu) 
+    + dy(u)*dy(uu)+ dx(v)*dx(vv) + dy(v)*dy(vv)) 
+    - p*pp*1.e-6 - p/den*(dx(uu) +dy(vv))- pp*(dx(u)+dy(v)))
+    - int2d(Th) ((convect([uold,vold],-dt,uold)*uu
+			+ convect([uold,vold],-dt,vold)*vv )/dt ) 
+    + on(1,u=0,v=0)
+	+ on(2,p=0)
+    + on(3,u=gg,v=0) ;    
+
+// Results	  
+for (i=0;i<=nmax;i++)	{
+	ns;
+	uold=u;
+	vold=v;
+	cout<< "Valor de i = "<< i <<"\n";
+	plot(u,cmm="t (s): " + i, fill=true,value=true);
+	//plot(coef=0.5,value=0,cmm= "Velocidad [u1, u2]
+	}
